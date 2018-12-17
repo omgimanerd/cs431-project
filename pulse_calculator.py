@@ -13,44 +13,68 @@ THRESHOLD = 10
 class PulseCalculator:
     def __init__(self, t_start=0):
         self.t_start = t_start
-        self.observations = None
+        self.observations = []
+        self.pulse = []
 
     def add_observation(self, value, time):
-        if self.observations is None:
-            self.observations = np.array([value, time])
-        else:
-            self.observations = np.vstack((
-                self.observations, [value, time - self.t_start]))
+        self.observations.append([value, time])
+        pulse = self.calculate_pulse()
+        self.pulse.append([pulse, time])
 
-    def get_observations(self, window, sigma=5):
-        if self.observations is None or self.observations.shape[0] < 10:
-            return np.zeros(1), np.zeros(1)
-        last_observation_t = self.observations[-1,1]
-        selected = self.observations[:,1] > (last_observation_t - window)
-        observations = self.observations[selected]
-        values = gaussian_filter(observations[:,0], sigma=sigma)
-        times = observations[:,1]
-        return values, times
+    def get_observations(self, window):
+        if len(self.observations) < 20:
+            return None
+        observations = np.array(self.observations)
+        last_observation_t = observations[-1,1]
+        selected = observations[:,1] > (last_observation_t - window)
+        return observations[selected]
 
-    def get_pulse(self, window=5000):
-        values, times = self.get_observations(window)
-        duration = (times[-1] - times[0]) / 1000
-        if duration == 0:
+    def calculate_pulse(self, window=6000):
+        if len(self.observations) < 20:
             return 0
-        peaks, _ = find_peaks(values)
-        return len(peaks) / duration * 60
+        observations = np.array(self.observations)
+        start_t = observations[-1,1] - window
+        observations = observations[observations[:,1] > start_t]
+        values, times = observations[:,0], observations[:,1]
+        n = len(observations)
+        duration = (times[-1] - times[0]) / 1000
+        fps = float(n) / duration
 
-    def plot_pulse(self, window=math.inf):
-        values, times = self.get_observations(window)
-        peaks, _ = find_peaks(values, height=np.median(values))
+        spaced_time = np.linspace(times[0], times[-1], n)
+        interpolated = np.interp(spaced_time, times, values) * np.hamming(n)
+        fft = np.fft.rfft(interpolated - np.mean(interpolated))
+        abs_fft = np.abs(fft)
+        freqs = float(fps) / n * np.arange(n / 2 + 1) * 60.0
+        selected_index = np.where((freqs > 50) & (freqs < 180))
+        pruned = abs_fft[selected_index]
+        if len(pruned) == 0:
+            return 0
+        return freqs[selected_index][np.argmax(pruned)]
+
+    def get_pulse(self):
+        return self.pulse[-1][0]
+
+    def plot_observations(self):
+        observations = np.array(self.observations)
+        values, times = observations[:,0], observations[:,1]
         plt.figure(1)
+        plt.xlabel('Time')
+        plt.ylabel('Optical Intensity')
         plt.plot(times, values)
-        plt.plot(times[peaks], values[peaks], 'ro')
-        plt.show()
+
+    def plot_pulse(self):
+        pulse = np.array(self.pulse)
+        values, times = pulse[:,0], pulse[:,1]
+        plt.figure(2)
+        plt.xlabel('Time')
+        plt.ylabel('Calculated BPM')
+        plt.plot(times, values)
+
+    def serialize(self, name):
+        np.savetxt(name, self.observations, delimiter=',')
 
 if __name__ == '__main__':
-    with open('face2.npy', 'rb') as f:
-        face2 = np.load(f)
     calculator = PulseCalculator()
-    calculator.observations = face2
-    calculator.get_pulse()
+    observations = np.loadtxt('pulse.txt', delimiter=',')
+    calculator.observations = observations[:100]
+    print(calculator.get_pulse())
