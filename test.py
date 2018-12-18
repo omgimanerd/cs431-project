@@ -29,7 +29,8 @@ def process_pulse(video, transform=None):
     fps = cap.get(cv2.CAP_PROP_FPS)
     t_interval = 1000 / fps
 
-    face_detector = faceDetector(FACE_CASCADE)
+    # face_detector = faceDetector(FACE_CASCADE)
+    face_detector = cv2.CascadeClassifier(FACE_CASCADE)
     calculator = PulseCalculator()
     t = 0
     while cap.isOpened():
@@ -39,7 +40,8 @@ def process_pulse(video, transform=None):
         if transform:
             frame = transform(frame)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_detector.detect_face(gray)
+        # faces = face_detector.detect_face(gray)
+        faces = face_detector.detectMultiScale(gray)
         if len(faces) != 1:
             continue
         x, y, w, h = faces[0]
@@ -65,7 +67,10 @@ def process_pulse(video, transform=None):
 if __name__ == '__main__':
     # face2 = os.path.join(BASE_DIR, 'data/face2.mp4')
     # process_pulse(face2)
-    james = os.path.join(BASE_DIR, 'data/alvin.mp4')
-    def transform(frame):
-        return cv2.resize(frame, (0, 0), fx=0.4, fy=0.4)
-    process_pulse(james, transform)
+    #
+    # alvin = os.path.join(BASE_DIR, 'data/alvin.mp4')
+    # def transform(frame):
+    #     return cv2.resize(frame, (0, 0), fx=0.4, fy=0.4)
+    # process_pulse(alvin, transform)
+
+    process_pulse(0)
