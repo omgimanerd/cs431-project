@@ -42,11 +42,10 @@ class PulseCalculator:
 
         spaced_time = np.linspace(times[0], times[-1], n)
         interpolated = np.interp(spaced_time, times, values) * np.hamming(n)
-        fft = np.fft.rfft(interpolated - np.mean(interpolated))
-        abs_fft = np.abs(fft)
+        fft = np.abs(np.fft.rfft(interpolated - np.mean(interpolated)))
         freqs = float(fps) / n * np.arange(n / 2 + 1) * 60.0
         selected_index = np.where((freqs > 50) & (freqs < 180))
-        pruned = abs_fft[selected_index]
+        pruned = fft[selected_index]
         if len(pruned) == 0:
             return 0
         return freqs[selected_index][np.argmax(pruned)]

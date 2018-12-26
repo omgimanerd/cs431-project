@@ -33,6 +33,7 @@ def process_pulse(video, transform=None):
     face_detector = cv2.CascadeClassifier(FACE_CASCADE)
     calculator = PulseCalculator()
     t = 0
+    t_start = time.time()
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -49,7 +50,8 @@ def process_pulse(video, transform=None):
         ymin, ymax = y, y + h // 3
         forehead = frame[ymin:ymax, xmin:xmax]
         intensity = get_intensity(forehead)
-        calculator.add_observation(intensity, t)
+        calculator.add_observation(intensity, (time.time() - t_start) * 1000)
+        # calculator.add_observation(intensity, t)
         pulse_text = '{:2.2f}'.format(calculator.get_pulse())
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
         cv2.putText(frame, pulse_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX,
