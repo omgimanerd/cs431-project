@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from scipy.ndimage import gaussian_filter
-from scipy.signal import find_peaks
 
 THRESHOLD = 10
 
@@ -26,8 +25,13 @@ class PulseCalculator:
         observations = np.array(self.observations)
         last_observation_t = observations[-1,1]
         selected = observations[:,1] > (last_observation_t - window)
-        return observations[selected]
-
+        observations = observations[selected]
+        o_mean = observations[:,0].mean()
+        o_std = np.std(observation[:,0])
+        o_min, o_max = o_mean - 1.5 * o_std, o_mean + 1.5 * o_std
+        filtered = observations[:,0] >= o_min and observations[:,0] <= o_max
+        return observations[filtered]
+        
     def calculate_pulse(self, window=6):
         if len(self.observations) < 20:
             return 0
